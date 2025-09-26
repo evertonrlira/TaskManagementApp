@@ -1,0 +1,9 @@
+/* Reset any specific App styles that might conflict with Tailwind */
+#root {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* If you want to keep some specific animations or effects from the original CSS, you can do so below */

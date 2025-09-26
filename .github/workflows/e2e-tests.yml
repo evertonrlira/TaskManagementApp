@@ -1,0 +1,85 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  e2e-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore .NET dependencies
+      run: |
+        cd src/backend
+        dotnet restore
+
+    - name: Build .NET application
+      run: |
+        cd src/backend
+        dotnet build --no-restore
+
+    - name: Install frontend dependencies
+      run: |
+        cd src/frontend
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd src/frontend
+        npm run build
+
+    - name: Install E2E test dependencies
+      run: |
+        cd tests/e2e
+        npm ci
+
+    - name: Install Playwright browsers
+      run: |
+        cd tests/e2e
+        npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Run E2E tests
+      run: |
+        cd tests/e2e
+        npx playwright test --project=${{ matrix.browser }}
+      env:
+        CI: true
+        ASPNETCORE_ENVIRONMENT: Testing
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.browser }}
+        path: tests/e2e/playwright-report/
+        retention-days: 30
+
+    - name: Upload test videos
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-videos-${{ matrix.browser }}
+        path: tests/e2e/test-results/
+        retention-days: 30
